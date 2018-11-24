@@ -58,7 +58,7 @@ object Schedules extends jacop {
       dataSeries(0)(i)(professorIndex) #\= 2
       dataSeries(1)(i)(professorIndex) #\= 2
     }
-     // Grolaux ne donne pas cours le vendredi
+    // Grolaux ne donne pas cours le vendredi
     if (i / hoursNumber == 4) {
       dataSeries(0)(i)(professorIndex) #\= 2
       dataSeries(1)(i)(professorIndex) #\= 2
@@ -82,19 +82,18 @@ object Schedules extends jacop {
   }
 
   val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSol)
-  
-    
-  def getScheduleSerie(serie: Int): List[List[String]] = {
-    val schedule = List()
-     for (h <- List.range(0, hoursNumber)) {
-        for (d <- List.range(0, daysNumber)) {
-          val slot = hoursNumber * d + h;
-          val course = courses(dataSeries(serie)(slot)(courseIndex).value())
-          val professor = professors(dataSeries(serie)(slot)(professorIndex).value())
-          val local = locals(dataSeries(serie)(slot)(localIndex).value())
-          schedule ++ List(course, professor, local)
-        }
+
+  def getScheduleSerie(serie: Int): Map[Int, List[String]] = {
+    var schedule = Map[Int, List[String]]()
+    for (d <- List.range(0, daysNumber)) {
+      for (h <- List.range(0, hoursNumber)) {
+        val slot = hoursNumber * d + h;
+        val course = courses(dataSeries(serie)(slot)(courseIndex).value())
+        val professor = professors(dataSeries(serie)(slot)(professorIndex).value())
+        val local = locals(dataSeries(serie)(slot)(localIndex).value())
+        schedule = schedule + (slot -> List(course, professor, local))
       }
-     return schedule
+    }
+    return schedule
   }
 }
