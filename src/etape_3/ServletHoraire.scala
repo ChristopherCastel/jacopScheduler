@@ -5,6 +5,10 @@ import javax.servlet.http.HttpServlet
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import com.sun.net.httpserver.HttpServer
+import spray.json._
+import DefaultJsonProtocol._ 
+import sun.rmi.transport.proxy.HttpReceiveSocket
+import com.sun.xml.internal.ws.transport.http.client.HttpResponseProperties
 
 class ServletHoraire extends HttpServlet {
 
@@ -22,7 +26,9 @@ class ServletHoraire extends HttpServlet {
   def getSchedule(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
     val serie = req.getParameter("serie");
     val data = Schedules.getScheduleSerie((Integer.parseInt(serie) - 1))
-    println(data)
+    val json = data.toJson.prettyPrint
+    resp.setContentType("application/json");
+		resp.getOutputStream().write(json.getBytes());
   }
 }
 
