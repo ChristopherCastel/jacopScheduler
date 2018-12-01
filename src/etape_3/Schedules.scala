@@ -23,10 +23,10 @@ object Schedules extends jacop {
   val locals = List("vide", "A17", "A19")
   val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
 
-  // one array per serie, each array contains 20 (one per slots = days and hours) arrays that contains the course, the professor and the local.
+  // one list per serie, each list contains 20 (one per slots = days and hours) list that contains the course, the professor and the local.
   // the value "0" for the course, professor and local means that the time-slot is empty.
-  val dataSeries = Array.tabulate(seriesNumber)(i => Array.tabulate(slotsNumber)(i => List(new IntVar("courses", 0, 4), new IntVar("professors", 0, 4), new IntVar("locals", 0, 2))))
-
+  val dataSeries = for (s <- List.range(0, seriesNumber)) yield for (s <- List.range(0, slotsNumber)) yield List(new IntVar("courses", 0, 4), new IntVar("professors", 0, 4), new IntVar("locals", 0, 2))
+  
   for (s <- dataSeries) {
     // forces each course to appear coursesOccurences(i) times during the week
     for (i <- List.range(0, coursesNumber)) {
@@ -82,7 +82,7 @@ object Schedules extends jacop {
     }
   }
 
-  val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min))
+  val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSol)
 
   def getScheduleSerie(serie: Int): List[List[String]] = {
     dataSeries(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))
