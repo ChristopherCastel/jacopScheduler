@@ -1,4 +1,4 @@
-package etape_2
+  package etape_2
 
 import JaCoP.scala._
 import scala.reflect.ClassManifestFactory.classType
@@ -23,10 +23,10 @@ object Projet2 extends App with jacop {
   val locals = List("vide", "A17", "A19")
   val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
 
-  // one array per serie, each array contains 20 (one per slots = days and hours) arrays that contains the course, the professor and the local.
+  // one list per serie, each list contains 20 (one per slots = days and hours) list that contains the course, the professor and the local.
   // the value "0" for the course, professor and local means that the time-slot is empty.
-  val dataSeries = Array.tabulate(seriesNumber)(i => Array.tabulate(slotsNumber)(i => List(new IntVar("courses", 0, 4), new IntVar("professors", 0, 4), new IntVar("locals", 0, 2))))
-
+  val dataSeries = for (s <- List.range(0, seriesNumber)) yield for (s <- List.range(0, slotsNumber)) yield List(new IntVar("courses", 0, 4), new IntVar("professors", 0, 4), new IntVar("locals", 0, 2))
+  
   for (s <- dataSeries) {
     // forces each course to appear coursesOccurences(i) times during the week
     for (i <- List.range(0, coursesNumber)) {

@@ -12,7 +12,9 @@ $(function() {
 	    		$(this).find("td:gt(0)").each(function(j, td) {
 	    			var slot_data = resp[i +  4 * j];
 	    			if (slot_data[0] !== "vide") {
-	    				$(this).text(slot_data[0] + " " + slot_data[1] + " " + slot_data[2])
+	    				$(this).text(slot_data[0] + " " + slot_data[1] + " " + slot_data[2]);
+	    			} else {
+	    				$(this).text("");
 	    			}
 	    		})
 	    	})
