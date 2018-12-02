@@ -65,7 +65,7 @@ object Schedules extends jacop {
     }
   }
 
-  def printSol(): Unit = {
+  def printSolutions(): Unit = {
     //dataSeries.foreach(s => s.)
     for (s <- List.range(0, seriesNumber)) {
       println(series(s))
@@ -82,7 +82,7 @@ object Schedules extends jacop {
     }
   }
 
-  val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSol)
+  val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSolutions)
 
   def getScheduleSerie(serie: Int): List[List[String]] = {
     dataSeries(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))

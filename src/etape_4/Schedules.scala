@@ -25,6 +25,8 @@ object Schedules extends App with jacop {
   val locals = List("vide", "A17", "A19")
 
   val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
+  // retient les professeurs pour chaque cours
+  val professorsCourses = List(List(0), List(1), List(2), List(3), List(1, 4))
   val professorsHours = List(0, 2, 1, 2, 2)
 
   // one list per serie, each list contains 20 (one per slots = days and hours) list that contains the course, the professor and the local.
@@ -38,11 +40,20 @@ object Schedules extends App with jacop {
     }
   }
 
-  val softConstraints = List()
+  // structure pour stocker les soft contraints professorales qu'on minisera par un count sur le true du boolvar
+  val softConstraints = for (i <- List.range(0, slotsNumber * seriesNumber)) yield new BoolVar("s" + i)
   for (i <- List.range(0, slotsNumber)) {
+
     // assigns each professor that a course for a timeslot
-    dataSeries(0)(i)(courseIndex) #= dataSeries(0)(i)(professorIndex)
-    dataSeries(1)(i)(courseIndex) #= dataSeries(1)(i)(professorIndex)
+    for (s <- List.range(0, seriesNumber)) {
+      val boolvars = for (c <- List.range(1, professorsCourses(courseIndex).length)) yield new BoolVar("s" + c)
+      for (c <- List.range(0, boolvars.length)) {
+        boolvars(c) <=> (dataSeries(s)(i)(professorIndex) #= professorsCourses(courseIndex)(c + 1))
+      }
+      sum(boolvars) #= 1
+    }
+      
+    // meme prof ne peut donner cours a des series differentes au meme moment
     OR(AND(dataSeries(0)(i)(professorIndex) #= 0, dataSeries(1)(i)(professorIndex) #= 0), dataSeries(0)(i)(professorIndex) #\= dataSeries(1)(i)(professorIndex))
 
     // assigns locals, impossible to assign the same locals twice at the same timeslot
@@ -55,12 +66,10 @@ object Schedules extends App with jacop {
 
     // Seront donne pas cours premiere heure au matin tous les jours de la semaine
     if (i % hoursNumber == 0) {
-      val statement1 = new BoolVar("s1");
-      val statement2 = new BoolVar("s2");
-      statement1 <=> (dataSeries(0)(i)(professorIndex) #= 1)
-      statement2 <=> (dataSeries(1)(i)(professorIndex) #= 1)
-      softConstraints :: (List(statement1, statement2))
-      // count(list, count, value)
+      // sans double implication ce sont des hard constraints, avec la double implication c'est eventuellement des contraintes
+      softConstraints(i) <=> (dataSeries(0)(i)(professorIndex) #= 1)
+      softConstraints(i + 20) <=> (dataSeries(1)(i)(professorIndex) #= 1)
+
       /*
        * Il faudrait avoir tous les statements définis à un endroit
        * de manière à ce que la liste de statement soit immuable.
@@ -103,8 +112,8 @@ object Schedules extends App with jacop {
     }
   }
 
-  //val result = minimize(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), sum(softConstraints), printSolutions)
-    val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSolutions)
+  //val result = minimize(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), count(softConstraints, 0), printSolutions)
+  val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSolutions)
 
   def getScheduleSerie(serie: Int): List[List[String]] = {
     dataSeries(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))
