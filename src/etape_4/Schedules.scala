@@ -20,14 +20,14 @@ object Schedules extends App with jacop {
   val series = List("Serie 1", "Serie 2")
 
   val courses = List("vide", "algo", "compta", "math", "asm")
-  val coursesOccurences = List(slotsNumber - 2 - 1 - 2 - 2, 2, 1, 2, 2)
+  val coursesOccurences = List(slotsNumber - 3 - 1 - 2 - 2, 3, 1, 2, 2)
 
   val locals = List("vide", "A17", "A19")
 
   val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
   // retient les professeurs pour chaque cours
-  val professorsCourses = List(List(0), List(1), List(2), List(3), List(1, 4))
-  val professorsHours = List(0, 2, 1, 2, 2)
+  val professorsCourses = List(0, 1, 2, 3, 1)
+  val professorsHours = List(0, 3, 1, 2, 2) // /!\ Nombre d'heures PAR SERIE pour la semaine par cours
 
   // one list per serie, each list contains 20 (one per slots = days and hours) list that contains the course, the professor and the local.
   // the value "0" for the course, professor and local means that the time-slot is empty.
@@ -36,23 +36,22 @@ object Schedules extends App with jacop {
   for (s <- dataSeries) {
     // forces each course to appear coursesOccurences(i) times during the week
     for (i <- List.range(0, coursesNumber)) {
-      count(s.map((li) => li(courseIndex)), i) #= coursesOccurences(i)
+      count(s.map(li => li(courseIndex)), i) #= coursesOccurences(i)
+    }
+    // forces each course to appear professorsHours(i) times during the week
+    for (i <- List.range(1, professorsNumber)) {
+      count(s.map(li => li(professorIndex)), i) #= professorsHours(i)
     }
   }
 
   // structure pour stocker les soft contraints professorales qu'on minisera par un count sur le true du boolvar
   val softConstraints = for (i <- List.range(0, slotsNumber * seriesNumber)) yield new BoolVar("s" + i)
   for (i <- List.range(0, slotsNumber)) {
-
-    // assigns each professor that a course for a timeslot
+    // assigns each professor to a course for a timeslot
     for (s <- List.range(0, seriesNumber)) {
-      val boolvars = for (c <- List.range(1, professorsCourses(courseIndex).length)) yield new BoolVar("s" + c)
-      for (c <- List.range(0, boolvars.length)) {
-        boolvars(c) <=> (dataSeries(s)(i)(professorIndex) #= professorsCourses(courseIndex)(c + 1))
-      }
-      sum(boolvars) #= 1
+      dataSeries(s)(i)(courseIndex) #= dataSeries(s)(i)(professorIndex)
     }
-      
+
     // meme prof ne peut donner cours a des series differentes au meme moment
     OR(AND(dataSeries(0)(i)(professorIndex) #= 0, dataSeries(1)(i)(professorIndex) #= 0), dataSeries(0)(i)(professorIndex) #\= dataSeries(1)(i)(professorIndex))
 
@@ -64,21 +63,11 @@ object Schedules extends App with jacop {
     c <=> (dataSeries(1)(i)(courseIndex) #\= 0)
     c <=> AND(dataSeries(1)(i)(localIndex) #\= 0, dataSeries(0)(i)(localIndex) #\= dataSeries(1)(i)(localIndex))
 
-    // Seront donne pas cours premiere heure au matin tous les jours de la semaine
-    if (i % hoursNumber == 0) {
-      // sans double implication ce sont des hard constraints, avec la double implication c'est eventuellement des contraintes
-      softConstraints(i) <=> (dataSeries(0)(i)(professorIndex) #= 1)
-      softConstraints(i + 20) <=> (dataSeries(1)(i)(professorIndex) #= 1)
-
-      /*
-       * Il faudrait avoir tous les statements définis à un endroit
-       * de manière à ce que la liste de statement soit immuable.
-       * Ensuite on aura tous les count définis à un endroits qui seront nos soft constraints
-       * ces counts seront testés et mis dans les boolvar, true si la contrainte est pas respectée
-       * on sommera ces statement dans un intvar qui sera minimizé dans le minimize
-       */
+    // Seront donne cours uniquement premiere heure au matin tous les jours de la semaine
+    if (i % hoursNumber != 0) {
+      softConstraints(i) <=> (dataSeries(0)(i)(professorIndex) #\= 1)
+      softConstraints(i + 20) <=> (dataSeries(1)(i)(professorIndex) #\= 1)
     }
-
     // Grolaux ne donne pas cours le jeudi
     if (i / hoursNumber == 3) {
       dataSeries(0)(i)(professorIndex) #\= 2
@@ -89,12 +78,12 @@ object Schedules extends App with jacop {
       dataSeries(0)(i)(professorIndex) #\= 2
       dataSeries(1)(i)(professorIndex) #\= 2
     }
-    // Le cours d'algo est donné à 8h30
-    if (i % hoursNumber != 0) {
-      dataSeries(0)(i)(courseIndex) #\= 1
-      dataSeries(1)(i)(courseIndex) #\= 1
-    }
   }
+
+  val dataList = List(dataSeries(0).flatMap(_.toList), dataSeries(1).flatMap(_.toList))
+  val select = search_vector(dataList, smallest_min, indomain_min)
+  val cost = count(softConstraints, 0)
+  val result = minimize(select, cost, printSolutions)
 
   def printSolutions(): Unit = {
     for (s <- List.range(0, seriesNumber)) {
@@ -111,9 +100,6 @@ object Schedules extends App with jacop {
       }
     }
   }
-
-  //val result = minimize(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), count(softConstraints, 0), printSolutions)
-  val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSolutions)
 
   def getScheduleSerie(serie: Int): List[List[String]] = {
     dataSeries(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))
