@@ -29,7 +29,7 @@ object Projet2 extends App with jacop {
   
   for (s <- dataSeries) {
     // forces each course to appear coursesOccurences(i) times during the week
-    for (i <- List.range(0, coursesNumber)) {
+    for (i <- List.range(1, coursesNumber + 1)) {
       count(s.map((li) => li(courseIndex)), i) #= coursesOccurences(i)
     }
   }
@@ -81,5 +81,7 @@ object Projet2 extends App with jacop {
     }
   }
 
-  val result = satisfy(search(dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList), input_order, indomain_min), printSol)
+  val data = dataSeries(0).flatMap(_.toList) ++ dataSeries(1).flatMap(_.toList)
+  println(data)
+  val result = satisfy(search(data, input_order, indomain_min), printSol)
 }
