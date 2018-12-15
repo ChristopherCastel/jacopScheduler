@@ -6,13 +6,13 @@ import scala.reflect.ClassManifestFactory.classType
 object Schedules extends App with jacop {
 
   val blocsNumber = 2
-  val seriesNumber = List(1, 1, 1)
+  val seriesNumber = List(2, 1, 1)
   val totalSeries = seriesNumber.foldLeft(0)((h, t) => h + t)
   
   val localsNumber = 13
   val professorsNumber = 4
   val coursesNumber = 4
-  val daysNumber = 2
+  val daysNumber = 3
   val hoursNumber = 4
   val slotsNumber = daysNumber * hoursNumber
 
@@ -25,10 +25,10 @@ object Schedules extends App with jacop {
   val courses = List("vide", "algo th", "asm", "algo ex", "anglais")
   val coursesThex = List("vide", "TH", "TH", "EX", "EX")
   val coursesOccurences = List(-1, 1, 1, 2, 2)
-  val courseEnglish = 4
 
   val locals = List("vide", "Aud A", "Aud B", "B11", "B12", "B21", "A017", "A019", "A025", "A026", "B22", "B25", "D3", "LL")
-  val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX") 
+  val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX")
+  val localsCapacity = List(0, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1)
 
   val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
   // retient les professeurs pour chaque cours
@@ -44,64 +44,109 @@ object Schedules extends App with jacop {
   val softConstraintsRobin = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
   val softConstraintsFerneeuw = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
 
-  // "algo th" before "algo ex" 
-  courseBeforeAnother(1, 3)
+  courseBeforeAnother(1, 3) // "algo th" before "algo ex" 
+  manageOccurences()
+  assignEachProfessorToACourse()
+  assignEachCourseToALocal()
+  manageTimeInconsistencyBetweenBlocs()
+  manageTimeInconsistencyBetweenSeriesOfBloc()
+  theoricalCoursesInTheoricalLocal()
+  courseToLocal(4, 13) // english class given in the local "labo langue"
+  hardProfessorNotWorkingDay(2, 1) // Grolaux doesn't work on monday
+  hardProfessorNotWorkingDay(2, 2) // Grolaux doesn't work on wed
+  hardProfessorNotWorkingHour(2, 0) // Grolaux doesn't work the first hour
+  hardProfessorNotWorkingHour(2, 1) // Grolaux doesn't work the second hour
+  softProfessorNotWorkingHour()
   
-  for (indiceBloc <- List.range(0, blocsNumber)) {
-    // hard constraints
-    for (iSerie <- List.range(0, seriesNumber(indiceBloc))) {
-      for (i <- List.range(1, coursesNumber + 1)) {
-    	   // forces each course to appear coursesOccurences(i) times during the week
-         count(dataSeries(indiceBloc)(iSerie).map(li => li(courseIndex)), i) #= coursesOccurences(i)
-      }
-      // forces each course to appear professorsHours(i) times during the week
-      for (i <- List.range(1, professorsNumber + 1)) {
-        count(dataSeries(indiceBloc)(iSerie).map(li => li(professorIndex)), i) #= professorsHours(i)
-      }
-      for (iSlot <- List.range(0, slotsNumber)) {
-        // english course in labo langues
-        // TODO Demander à Grolaux explication du OR
-    	  OR(AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= courseEnglish, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= 13), dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= courseEnglish)
-        // assigns each professor to a course for a timeslot
-        for (s <- List.range(0, seriesNumber(indiceBloc))) {
-          dataSeries(indiceBloc)(s)(iSlot)(courseIndex) #= dataSeries(indiceBloc)(s)(iSlot)(professorIndex)
-        }
-        
-        for (iBlocBis <- List.range(0, blocsNumber)) {
-          for (iSerieBis <- List.range(0, seriesNumber(iBlocBis)) if !(iSerie + " " + indiceBloc).equals((iSerieBis + " " + iBlocBis))) {
-        	  // meme prof ne peut donner cours a des series differentes au meme moment
-            OR(AND(dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #= 0, dataSeries(iBlocBis)(iSerieBis)(iSlot)(professorIndex) #= 0), dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= dataSeries(iBlocBis)(iSerieBis)(iSlot)(professorIndex))
-            // meme local ne peut etre utilise en meme temps par des cours differents
-            OR(AND(dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= 0, dataSeries(iBlocBis)(iSerieBis)(iSlot)(localIndex) #= 0), dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #\= dataSeries(iBlocBis)(iSerieBis)(iSlot)(localIndex))
-          }
-        }
-        // SOIT le cours est vide et donc le local est vide, SOIT le cours n'est pas vide et le local n'est pas vide
-        OR(AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= 0, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #\= 0), AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 0, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= 0))
-
-        // SOIT cours = theorie et local = theorie SOIT cours = exercices et local = exercice
-        val sizeTh = localsThex.count(c => c.equals("TH")) 
-        for (i <- List.range(1, coursesNumber + 1) if coursesThex(i).equals("TH")) {
-          OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= i, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #<= sizeTh)
-        }
+  def softProfessorNotWorkingHour() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
+      for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber != 0) {
+        // Seront donne cours uniquement premiere heure au matin tous les jours de la semaine
+        softConstraintsSeront(iBloc)(iSerie)(iSlot) <=> (dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= 1)
+        // Robin donne cours uniquement premiere heure au matin tous les jours de la semaine
+        softConstraintsRobin(iBloc)(iSerie)(iSlot) <=> (dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= 4)
+        // Ferneeuw donne cours uniquement premiere heure au matin tous les jours de la semaine
+        softConstraintsFerneeuw(iBloc)(iSerie)(iSlot) <=> (dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
       }
     }
+  }
 
-    for (iSerie <- List.range(0, seriesNumber(indiceBloc))) {
-      // Grolaux travaille pas le lundi
-      for (iSlot <- List.range(0, slotsNumber) if iSlot / hoursNumber == 0) {
-         dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 2
+  def manageOccurences() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
+      for (i <- List.range(1, coursesNumber + 1)) {
+        // retrieves all course's intvar
+        val coursesIntvar = dataSeries(iBloc)(iSerie).map(slot => slot(courseIndex))
+        // forces each course to appear coursesOccurences(i) times during the week
+        count(coursesIntvar, i) #= coursesOccurences(i)
+
+        val professorsIntvar = dataSeries(iBloc)(iSerie).map(slot => slot(professorIndex))
+        // forces each course to appear professorsHours(i) times during the week
+        count(professorsIntvar, i) #= professorsHours(i)
       }
-      // Grolaux travaille que l'aprem
-      for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber < 2) {
-         dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 2
+    }
+  }
+
+  def assignEachProfessorToACourse() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      // professor and its course are linked by their index
+      dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= dataSeries(iBloc)(iSerie)(iSlot)(professorIndex)
+    }
+  }
+
+  def assignEachCourseToALocal() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      // Either the course is "empty" and the local is "empty", or the course and the local aren't "empty"
+      OR(AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= 0, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #\= 0), AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= 0, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #= 0))
+    }
+  }
+
+  def courseToLocal(iCourse: Int, iLocal: Int) {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      // Either the course is constrained to the given local, or the course is not the one given
+      OR(AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= iCourse, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #= iLocal), dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= iCourse)
+    }
+  }
+
+  def manageTimeInconsistencyBetweenBlocs() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      for (iBlocBis <- List.range(0, blocsNumber) if iBlocBis != iBloc) {
+          for (iSerieBis <- List.range(0, seriesNumber(iBlocBis))) {
+              // meme prof ne peut donner cours a des series de blocs differentes au meme moment
+            OR(AND(dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #= 0, dataSeries(iBlocBis)(iSerieBis)(iSlot)(professorIndex) #= 0), dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= dataSeries(iBlocBis)(iSerieBis)(iSlot)(professorIndex))
+            // meme local ne peut etre utilise en meme temps par des series de blocs differents
+            OR(AND(dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #= 0, dataSeries(iBlocBis)(iSerieBis)(iSlot)(localIndex) #= 0), dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #\= dataSeries(iBlocBis)(iSerieBis)(iSlot)(localIndex))
+          }
+        }
+    }
+  }
+
+  def manageTimeInconsistencyBetweenSeriesOfBloc() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      for (iLocal <- List.range(1, localsNumber + 1)) {
+        val amountSeries = for (s <- List.range(0, seriesNumber(iBloc))) yield new BoolVar("s" + s)
+        for (iSerieBis <- List.range(0, seriesNumber(iBloc))) {
+          amountSeries(iSerieBis) <=> (dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex) #= iLocal)
+        }
+        count(amountSeries, 1) #<= localsCapacity(iLocal)
       }
-      for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber != 0) {
-      	// Seront donne cours uniquement premiere heure au matin tous les jours de la semaine
-        softConstraintsSeront(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 1)
-        // Robin donne cours uniquement premiere heure au matin tous les jours de la semaine
-        softConstraintsRobin(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 4)
-        // Ferneeuw donne cours uniquement premiere heure au matin tous les jours de la semaine
-        softConstraintsFerneeuw(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
+      for (iSerieBis <- List.range(0, seriesNumber(iBloc)) if iSerieBis != iSerie) {
+        OR(
+          AND(dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #= 0, dataSeries(iBloc)(iSerieBis)(iSlot)(professorIndex) #= 0),
+          OR(
+            AND(
+              dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= dataSeries(iBloc)(iSerieBis)(iSlot)(professorIndex),
+              dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #\= dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex)),
+              dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #= dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex)))
+      }
+    }
+  }
+
+  def theoricalCoursesInTheoricalLocal() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      // Either course = theorical and local = theorical, or course = exercices and local = exercices
+      val sizeTh = localsThex.count(c => c.equals("TH"))
+      for (i <- List.range(1, coursesNumber + 1) if coursesThex(i).equals("TH")) {
+        OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= i, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #<= sizeTh)
       }
     }
   }
@@ -115,6 +160,22 @@ object Schedules extends App with jacop {
       OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= courseBefore, AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= courseBefore, count(boolvars, 1) #= coursesOccurences(courseAfter)))
     }
   }
+
+  def hardProfessorNotWorkingDay(iProf: Int, day: Int) {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
+      for (iSlot <- List.range(0, slotsNumber) if iSlot / hoursNumber == day) {
+        dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= iProf
+      }
+    }
+  }
+
+  def hardProfessorNotWorkingHour(iProf: Int, hour: Int) {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
+      for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber == hour) {
+        dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= iProf
+      }
+    }
+  }
   
   
   val dataList = dataSeries.map(b => b.map(s => s.flatMap(_.toList)).flatMap(_.toList)).flatMap(_.toList)
@@ -126,7 +187,7 @@ object Schedules extends App with jacop {
   val result = minimize(select, cost, printSolutions)
 
   def printSolutions(): Unit = {
-    for (b <- List.range(0, blocsNumber)){
+    for (b <- List.range(0, blocsNumber)) {
       for (s <- List.range(0, seriesNumber(b))) {
         println(series(b)(s))
         for (h <- List.range(0, hoursNumber)) {
@@ -139,11 +200,11 @@ object Schedules extends App with jacop {
           }
           println("\n")
         }
-    }
+      }
     }
   }
 
-//  def getScheduleSerie(serie: Int): List[List[String]] = {
-//    dataSeries(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))
-//  }
+  def getScheduleSerie(bloc: Int, serie: Int): List[List[String]] = {
+    dataSeries(bloc)(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))
+  }
 }
