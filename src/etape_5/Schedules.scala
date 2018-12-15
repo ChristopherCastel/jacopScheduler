@@ -22,10 +22,10 @@ object Schedules extends App with jacop {
   val hours = List("8h30-10h30", "10h45-12h45", "13h45-15h45", "16h00-18h00")
   val series = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield "Bloc " + (b + 1) + " Serie " + (s + 1)
 
-  val courses = List("vide", "algo th", "anglais", "algo ex", "asm")
-  val coursesThex = List("vide", "TH", "EX", "EX", "EX")
+  val courses = List("vide", "algo th", "asm", "algo ex", "anglais")
+  val coursesThex = List("vide", "TH", "TH", "EX", "EX")
   val coursesOccurences = List(-1, 1, 1, 2, 2)
-  val courseEnglish = 2
+  val courseEnglish = 4
 
   val locals = List("vide", "Aud A", "Aud B", "B11", "B12", "B21", "A017", "A019", "A025", "A026", "B22", "B25", "D3", "LL")
   val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX") 
@@ -50,8 +50,6 @@ object Schedules extends App with jacop {
       for (i <- List.range(1, coursesNumber + 1)) {
     	   // forces each course to appear coursesOccurences(i) times during the week
          count(dataSeries(indiceBloc)(iSerie).map(li => li(courseIndex)), i) #= coursesOccurences(i)
-         
-         
       }
       // forces each course to appear professorsHours(i) times during the week
       for (i <- List.range(1, professorsNumber + 1)) {
@@ -101,6 +99,15 @@ object Schedules extends App with jacop {
         softConstraintsRobin(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 4)
         // Ferneeuw donne cours uniquement premiere heure au matin tous les jours de la semaine
         softConstraintsFerneeuw(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
+      }
+
+      // TODO !
+      for (iSlot <- List.range(0, slotsNumber)) {
+        val hm = for (b <- List.range(0, slotsNumber - iSlot)) yield new BoolVar("b" + b)
+        for (iSlot2 <- List.range(iSlot + 1, slotsNumber)) {
+          hm(iSlot2 - iSlot - 1) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 1)
+        }
+        OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= 3, count(hm, 1) #= coursesOccurences(1))
       }
     }
   }
