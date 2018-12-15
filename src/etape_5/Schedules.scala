@@ -101,13 +101,13 @@ object Schedules extends App with jacop {
         softConstraintsFerneeuw(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
       }
 
-      // TODO !
+      // Le cours d'algo th est donné avant le cours exercice
       for (iSlot <- List.range(0, slotsNumber)) {
-        val hm = for (b <- List.range(0, slotsNumber - iSlot)) yield new BoolVar("b" + b)
+        val boolvars = for (b <- List.range(0, slotsNumber - iSlot - 1)) yield new BoolVar("b" + b)
         for (iSlot2 <- List.range(iSlot + 1, slotsNumber)) {
-          hm(iSlot2 - iSlot - 1) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 1)
+          boolvars(iSlot2 - iSlot - 1) <=> (dataSeries(indiceBloc)(iSerie)(iSlot2)(courseIndex) #= 3)
         }
-        OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= 3, count(hm, 1) #= coursesOccurences(1))
+        OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= 1, AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 1, count(boolvars, 1) #= coursesOccurences(3)))
       }
     }
   }
