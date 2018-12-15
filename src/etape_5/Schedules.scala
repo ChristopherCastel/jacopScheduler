@@ -78,19 +78,9 @@ object Schedules extends App with jacop {
         OR(AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= 0, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #\= 0), AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 0, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= 0))
 
         // SOIT cours = theorie et local = theorie SOIT cours = exercices et local = exercice
-        for (i <- List.range(1, coursesNumber + 1)) {
-          
-          if (coursesThex(i).equals("TH")) {
-            AND(dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= 1, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= i))
-            
-//            OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 1, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 2, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 3, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 4, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 5)
-//            val sizeTh = localsThex.count(c => c.equals("TH")) 
-//            val boolvars = for (c <- List.range(0, sizeTh)) yield new BoolVar("c" + c)
-//            for (l <- List.range(1, sizeTh + 1)) {
-//              boolvars(l - 1) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= l)
-//            }
-//            count(boolvars, 1) #= 1
-          }
+        val sizeTh = localsThex.count(c => c.equals("TH")) 
+        for (i <- List.range(1, coursesNumber + 1) if coursesThex(i).equals("TH")) {
+          OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= i, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #<= sizeTh)
         }
       }
     }
