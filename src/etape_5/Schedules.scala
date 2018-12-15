@@ -48,10 +48,10 @@ object Schedules extends App with jacop {
     // hard constraints
     for (iSerie <- List.range(0, seriesNumber(indiceBloc))) {
       for (i <- List.range(1, coursesNumber + 1)) {
-    	  // forces each course to appear coursesOccurences(i) times during the week
+    	   // forces each course to appear coursesOccurences(i) times during the week
          count(dataSeries(indiceBloc)(iSerie).map(li => li(courseIndex)), i) #= coursesOccurences(i)
-         // SOIT cours = theorie et local = theorie SOIT cours = exercices et local = exercice
-        //OR(AND(_,_), AND(_,_))
+         
+         
       }
       // forces each course to appear professorsHours(i) times during the week
       for (i <- List.range(1, professorsNumber + 1)) {
@@ -76,6 +76,22 @@ object Schedules extends App with jacop {
         }
         // SOIT le cours est vide et donc le local est vide, SOIT le cours n'est pas vide et le local n'est pas vide
         OR(AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= 0, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #\= 0), AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 0, dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= 0))
+
+        // SOIT cours = theorie et local = theorie SOIT cours = exercices et local = exercice
+        for (i <- List.range(1, coursesNumber + 1)) {
+          
+          if (coursesThex(i).equals("TH")) {
+            AND(dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= 1, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= i))
+            
+//            OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 1, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 2, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 3, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 4, dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 5)
+//            val sizeTh = localsThex.count(c => c.equals("TH")) 
+//            val boolvars = for (c <- List.range(0, sizeTh)) yield new BoolVar("c" + c)
+//            for (l <- List.range(1, sizeTh + 1)) {
+//              boolvars(l - 1) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(localIndex) #= l)
+//            }
+//            count(boolvars, 1) #= 1
+          }
+        }
       }
     }
 
@@ -89,14 +105,12 @@ object Schedules extends App with jacop {
          dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 2
       }
       for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber != 0) {
-        if (iSlot % hoursNumber != 0) {
-        	// Seront donne cours uniquement premiere heure au matin tous les jours de la semaine
-          softConstraintsSeront(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 1)
-          // Robin donne cours uniquement premiere heure au matin tous les jours de la semaine
-          softConstraintsRobin(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 4)
-          // Ferneeuw donne cours uniquement premiere heure au matin tous les jours de la semaine
-          softConstraintsFerneeuw(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
-        }
+      	// Seront donne cours uniquement premiere heure au matin tous les jours de la semaine
+        softConstraintsSeront(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 1)
+        // Robin donne cours uniquement premiere heure au matin tous les jours de la semaine
+        softConstraintsRobin(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 4)
+        // Ferneeuw donne cours uniquement premiere heure au matin tous les jours de la semaine
+        softConstraintsFerneeuw(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
       }
     }
   }
