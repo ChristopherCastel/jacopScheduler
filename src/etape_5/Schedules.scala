@@ -44,6 +44,9 @@ object Schedules extends App with jacop {
   val softConstraintsRobin = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
   val softConstraintsFerneeuw = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
 
+  // "algo th" before "algo ex" 
+  courseBeforeAnother(1, 3)
+  
   for (indiceBloc <- List.range(0, blocsNumber)) {
     // hard constraints
     for (iSerie <- List.range(0, seriesNumber(indiceBloc))) {
@@ -100,18 +103,20 @@ object Schedules extends App with jacop {
         // Ferneeuw donne cours uniquement premiere heure au matin tous les jours de la semaine
         softConstraintsFerneeuw(indiceBloc)(iSerie)(iSlot) <=> (dataSeries(indiceBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
       }
-
-      // Le cours d'algo th est donné avant le cours exercice
-      for (iSlot <- List.range(0, slotsNumber)) {
-        val boolvars = for (b <- List.range(0, slotsNumber - iSlot - 1)) yield new BoolVar("b" + b)
-        for (iSlot2 <- List.range(iSlot + 1, slotsNumber)) {
-          boolvars(iSlot2 - iSlot - 1) <=> (dataSeries(indiceBloc)(iSerie)(iSlot2)(courseIndex) #= 3)
-        }
-        OR(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #\= 1, AND(dataSeries(indiceBloc)(iSerie)(iSlot)(courseIndex) #= 1, count(boolvars, 1) #= coursesOccurences(3)))
-      }
     }
   }
 
+  def courseBeforeAnother(courseBefore: Int, courseAfter: Int) {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      val boolvars = for (b <- List.range(0, slotsNumber - iSlot - 1)) yield new BoolVar("b" + b)
+      for (iNextSlots <- List.range(iSlot + 1, slotsNumber)) {
+        boolvars(iNextSlots - iSlot - 1) <=> (dataSeries(iBloc)(iSerie)(iNextSlots)(courseIndex) #= courseAfter)
+      }
+      OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= courseBefore, AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= courseBefore, count(boolvars, 1) #= coursesOccurences(courseAfter)))
+    }
+  }
+  
+  
   val dataList = dataSeries.map(b => b.map(s => s.flatMap(_.toList)).flatMap(_.toList)).flatMap(_.toList)
   val select = search(dataList, first_fail, indomain_middle) 
   val costSeront = softConstraintsSeront.flatMap(_.toList).flatMap(_.toList) 
