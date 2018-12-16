@@ -3,15 +3,15 @@ package etape_5
 import JaCoP.scala._
 import scala.reflect.ClassManifestFactory.classType
 
-object Schedules extends App with jacop {
+object Schedules extends jacop {
 
-  val blocsNumber = 1
-  val seriesNumber = List(2, 1, 1)
+  val blocsNumber = 3
+  val seriesNumber = List(4, 3, 2)
   
   val localsNumber = 13
   val professorsNumber = 4
   val coursesNumber = 4
-  val daysNumber = 2
+  val daysNumber = 5
   val hoursNumber = 4
   val slotsNumber = daysNumber * hoursNumber
 
@@ -52,16 +52,19 @@ object Schedules extends App with jacop {
   exerciceCoursesInExerciceLocal()
   courseToLocal(4, 13) // english class given in the local "labo langue"
   hardProfessorNotWorkingDay(2, 1) // Grolaux doesn't work on monday 
-  hardProfessorNotWorkingHour(2, 1) // Grolaux doesn't work the second hour 
-  
+  hardProfessorNotWorkingHour(2, 1) // Grolaux doesn't work the second hour
+
+  /* working but too long with default constraints
   // Seront only works the first hour
   softProfessorNotWorkingHour(1, 1); softProfessorNotWorkingHour(1, 2); softProfessorNotWorkingHour(1, 3)
   // Ferneeuw only works the first hour
   softProfessorNotWorkingHour(2, 1); softProfessorNotWorkingHour(2, 2); softProfessorNotWorkingHour(2, 3)
   // Robin only works the first hour
   softProfessorNotWorkingHour(4, 1); softProfessorNotWorkingHour(3, 2); softProfessorNotWorkingHour(3, 3)
-  
-  computeResults()
+  */
+
+  computeResultsMinimize() 
+ // computeResultsSatisfy()
   
   def manageOccurences() {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
@@ -189,9 +192,9 @@ object Schedules extends App with jacop {
   }
 
   
-  def computeResults() {
+  def computeResultsMinimize() {
     val dataList = dataSeries.map(b => b.map(s => s.flatMap(_.toList)).flatMap(_.toList)).flatMap(_.toList)
-    val select = search(dataList, first_fail, indomain_middle)
+    val select = search(dataList, input_order, indomain_min)
     val allCosts = for (p <- List.range(0, professorsNumber)) yield count(softConstraintsProfs(p).flatMap(_.toList).flatMap(_.toList), 0) * softConstraintsProfsWeight(p)
     def sum(x: List[IntVar]): IntVar = {
       x match {
@@ -203,6 +206,12 @@ object Schedules extends App with jacop {
     minimize(select, totalCost, printSolutions)
   }
 
+   def computeResultsSatisfy() {
+    val dataList = dataSeries.map(b => b.map(s => s.flatMap(_.toList)).flatMap(_.toList)).flatMap(_.toList)
+    val select = search(dataList, input_order, indomain_min) // config = 5 days - 3 blocs (4-3-2 series)
+    satisfy(select, printSolutions)
+  }
+  
   def printSolutions(): Unit = {
     for (b <- List.range(0, blocsNumber)) {
       for (s <- List.range(0, seriesNumber(b))) {

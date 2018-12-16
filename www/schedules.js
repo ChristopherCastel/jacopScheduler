@@ -1,11 +1,13 @@
 $(function() {
 	$("#select_serie").change(function() {
+		var serieBloc = $("#select_serie").val().split("|")
 		$.ajax({
 	        method: "POST",
 	        url: "/horaires",
 	        data: {
 	            action: "getSchedule",
-	            serie: $("#select_serie").val()
+	            serie: serieBloc[0],
+	            bloc: serieBloc[1]
 	        }
 	    }).done(function(resp) {
 	    	$("tbody").find("tr").each(function(i, tr) {
