@@ -5,12 +5,12 @@ import scala.reflect.ClassManifestFactory.classType
 
 object Schedules extends App with jacop {
 
-  val blocsNumber = 1
-  val seriesNumber = List(2, 1, 1)
+  val blocsNumber = 2
+  val seriesNumber = List(1, 1, 1)
   
   val localsNumber = 13
-  val professorsNumber = 4
-  val coursesNumber = 4
+  val professorsNumber = List(4, 4, 4)
+  val coursesNumber = List(4, 4, 4)
   val daysNumber = 3
   val hoursNumber = 4
   val slotsNumber = daysNumber * hoursNumber
@@ -21,29 +21,33 @@ object Schedules extends App with jacop {
   val hours = List("8h30-10h30", "10h45-12h45", "13h45-15h45", "16h00-18h00")
   val series = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield "Bloc " + (b + 1) + " Serie " + (s + 1)
 
-  val courses = List("vide", "algo th", "asm", "algo ex", "anglais")
-  val coursesThex = List("vide", "TH", "TH", "EX", "EX")
-  val coursesOccurences = List(-1, 1, 1, 2, 2)
-
+  //val courses = List("vide", "algo th", "asm", "algo ex", "anglais")
+  //val coursesThex = List("vide", "TH", "TH", "EX", "EX")
+  //val coursesOccurences = List(-1, 1, 1, 2, 2)
+  val courses = List(List("vide", "algo th", "asm", "algo ex", "anglais"), List("vide", "Unix th", "OS", "Unix ex", "Android"), List("vide", "Infra th", "Ethique", "Infra ex", "pattern"))
+  val coursesThex = List(List("vide", "TH", "TH", "EX", "EX"), List("vide", "TH", "TH", "EX", "EX"), List("vide", "TH", "TH", "EX", "EX"))
+  val coursesOccurences = List(List(-1, 1, 1, 2, 2), List(-1, 1, 1, 2, 2), List(-1, 1, 1, 2, 2))
+  
+  
   val locals = List("vide", "Aud A", "Aud B", "B11", "B12", "B21", "A017", "A019", "A025", "A026", "B22", "B25", "D3", "LL")
   val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX") //
   val localsCapacity = List(0, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1) // Nombre Max de séries d'un bloc qu'un local peut tenir
 
-  val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
+  val professors = List(List("vide", "Seront", "Grolaux", "Fernee", "Robin"), List("vide", "Ninane", "???", "VdMln", "Leconte"), List("vide", "Choquet", "Gwenael", "???bis", "Damas"))
   // retient les professeurs pour chaque cours
-  val professorsCourses = List(0, 1, 2, 3, 1)
-  val professorsHours = List(-1, 1, 1, 2, 2) // /!\ Nombre d'heures PAR SERIE pour la semaine par cours
+  //val professorsCourses = List((0, 1, 2, 3, 1), (0, 1, 2, 3, 1), (0, 1, 2, 3, 1))
+  val professorsHours = List(List(-1, 1, 1, 2, 2), List(-1, 1, 1, 2, 2), List(-1, 1, 1, 2, 2)) // /!\ Nombre d'heures PAR SERIE pour la semaine par cours
 
   // one list per serie, each list contains 20 (one per slots = days and hours) list that contains the course, the professor and the local.
   // the value "0" for the course, professor and local means that the time-slot is empty.
-  val dataSeries = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield for (s <- List.range(0, slotsNumber)) yield List(new IntVar("courses", 0, coursesNumber), new IntVar("professors", 0, professorsNumber), new IntVar("locals", 0, localsNumber))
+  val dataSeries = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield for (s <- List.range(0, slotsNumber)) yield List(new IntVar("courses", 0, coursesNumber(b)), new IntVar("professors", 0, professorsNumber(b)), new IntVar("locals", 0, localsNumber))
 
   // soft constraints
   val softConstraintsSeront = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
   val softConstraintsRobin = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
   val softConstraintsFerneeuw = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
 
-  courseBeforeAnother(1, 3) // "algo th" before "algo ex" 
+  //courseBeforeAnother(1, 3) // "algo th" before "algo ex" 
   manageOccurences()
   assignEachProfessorToACourse()
   assignEachCourseToALocal()
@@ -56,7 +60,7 @@ object Schedules extends App with jacop {
   hardProfessorNotWorkingDay(2, 2) // Grolaux doesn't work on wed
   hardProfessorNotWorkingHour(2, 0) // Grolaux doesn't work the first hour
   hardProfessorNotWorkingHour(2, 1) // Grolaux doesn't work the second hour
-  softProfessorNotWorkingHour()
+  //softProfessorNotWorkingHour()
   
   def softProfessorNotWorkingHour() {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
@@ -73,15 +77,15 @@ object Schedules extends App with jacop {
 
   def manageOccurences() {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
-      for (i <- List.range(1, coursesNumber + 1)) {
+      for (i <- List.range(1, coursesNumber(iBloc) + 1)) {
         // retrieves all course's intvar
         val coursesIntvar = dataSeries(iBloc)(iSerie).map(slot => slot(courseIndex))
         // forces each course to appear coursesOccurences(i) times during the week
-        count(coursesIntvar, i) #= coursesOccurences(i)
+        count(coursesIntvar, i) #= coursesOccurences(iBloc)(i)
 
         val professorsIntvar = dataSeries(iBloc)(iSerie).map(slot => slot(professorIndex))
         // forces each course to appear professorsHours(i) times during the week
-        count(professorsIntvar, i) #= professorsHours(i)
+        count(professorsIntvar, i) #= professorsHours(iBloc)(i)
       }
     }
   }
@@ -146,7 +150,7 @@ object Schedules extends App with jacop {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
       // if course = theorical then local = theorical
       val sizeTh = localsThex.count(c => c.equals("TH"))
-      for (i <- List.range(1, coursesNumber + 1) if coursesThex(i).equals("TH")) {
+      for (i <- List.range(1, coursesNumber(iBloc) + 1) if coursesThex(iBloc)(i).equals("TH")) {
         OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= i, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #<= sizeTh)
       }
     }
@@ -156,7 +160,7 @@ object Schedules extends App with jacop {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
       // if course = exercices then local = exercices
       val sizeTh = localsThex.count(c => c.equals("TH"))
-      for (i <- List.range(1, coursesNumber + 1) if coursesThex(i).equals("EX")) {
+      for (i <- List.range(1, coursesNumber(iBloc) + 1) if coursesThex(iBloc)(i).equals("EX")) {
         OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= i, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #> sizeTh)
       }
     }
@@ -168,7 +172,7 @@ object Schedules extends App with jacop {
       for (iNextSlots <- List.range(iSlot + 1, slotsNumber)) {
         boolvars(iNextSlots - iSlot - 1) <=> (dataSeries(iBloc)(iSerie)(iNextSlots)(courseIndex) #= courseAfter)
       }
-      OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= courseBefore, AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= courseBefore, count(boolvars, 1) #= coursesOccurences(courseAfter)))
+      OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= courseBefore, AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= courseBefore, count(boolvars, 1) #= coursesOccurences(iBloc)(courseAfter)))
     }
   }
 
@@ -195,7 +199,8 @@ object Schedules extends App with jacop {
   val costRobin = softConstraintsRobin.flatMap(_.toList).flatMap(_.toList)
   val costFerneeuw = softConstraintsFerneeuw.flatMap(_.toList).flatMap(_.toList)
   val cost = count(costSeront, 0) * 100 + count(costRobin, 0) * 100 + count(costFerneeuw, 0)
-  val result = minimize(select, cost, printSolutions)
+  //val result = minimize(select, cost, printSolutions)
+  val result = satisfy(select, printSolutions)
 
   def printSolutions(): Unit = {
     for (b <- List.range(0, blocsNumber)) {
@@ -205,8 +210,8 @@ object Schedules extends App with jacop {
           print(hours(h))
           for (d <- List.range(0, daysNumber)) {
             val slot = hoursNumber * d + h;
-            print("\t" + courses(dataSeries(b)(s)(slot)(courseIndex).value()))
-            print("\t" + professors(dataSeries(b)(s)(slot)(professorIndex).value()))
+            print("\t" + courses(b)(dataSeries(b)(s)(slot)(courseIndex).value()))
+            print("\t" + professors(b)(dataSeries(b)(s)(slot)(professorIndex).value()))
             print("\t" + locals(dataSeries(b)(s)(slot)(localIndex).value()) + "\t");
           }
           println("\n")
@@ -215,7 +220,7 @@ object Schedules extends App with jacop {
     }
   }
 
-  def getScheduleSerie(bloc: Int, serie: Int): List[List[String]] = {
-    dataSeries(bloc)(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))
-  }
+  //def getScheduleSerie(bloc: Int, serie: Int): List[List[String]] = {
+  //  dataSeries(bloc)(serie).map(s => List(courses(s(courseIndex).value()), professors(s(professorIndex).value()), locals(s(localIndex).value())))
+  //}
 }
