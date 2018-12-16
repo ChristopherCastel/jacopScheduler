@@ -5,9 +5,8 @@ import scala.reflect.ClassManifestFactory.classType
 
 object Schedules extends App with jacop {
 
-  val blocsNumber = 2
+  val blocsNumber = 1
   val seriesNumber = List(2, 1, 1)
-  val totalSeries = seriesNumber.foldLeft(0)((h, t) => h + t)
   
   val localsNumber = 13
   val professorsNumber = 4
@@ -27,8 +26,8 @@ object Schedules extends App with jacop {
   val coursesOccurences = List(-1, 1, 1, 2, 2)
 
   val locals = List("vide", "Aud A", "Aud B", "B11", "B12", "B21", "A017", "A019", "A025", "A026", "B22", "B25", "D3", "LL")
-  val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX")
-  val localsCapacity = List(0, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1)
+  val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX") //
+  val localsCapacity = List(0, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1) // Nombre Max de séries d'un bloc qu'un local peut tenir
 
   val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
   // retient les professeurs pour chaque cours
@@ -51,6 +50,7 @@ object Schedules extends App with jacop {
   manageTimeInconsistencyBetweenBlocs()
   manageTimeInconsistencyBetweenSeriesOfBloc()
   theoricalCoursesInTheoricalLocal()
+  exerciceCoursesInExerciceLocal()
   courseToLocal(4, 13) // english class given in the local "labo langue"
   hardProfessorNotWorkingDay(2, 1) // Grolaux doesn't work on monday
   hardProfessorNotWorkingDay(2, 2) // Grolaux doesn't work on wed
@@ -127,26 +127,37 @@ object Schedules extends App with jacop {
         for (iSerieBis <- List.range(0, seriesNumber(iBloc))) {
           amountSeries(iSerieBis) <=> (dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex) #= iLocal)
         }
+        // Forces a local to have max localsCapacity(local) of series within a bloc
         count(amountSeries, 1) #<= localsCapacity(iLocal)
       }
       for (iSerieBis <- List.range(0, seriesNumber(iBloc)) if iSerieBis != iSerie) {
         OR(
+          // Either the course is "empty" and the local is "empty"
           AND(dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #= 0, dataSeries(iBloc)(iSerieBis)(iSlot)(professorIndex) #= 0),
+          // Either the teachers and locals of the two series are different, Or the locals are the same (and thus so are the teachers)
           OR(
-            AND(
-              dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= dataSeries(iBloc)(iSerieBis)(iSlot)(professorIndex),
-              dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #\= dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex)),
-              dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #= dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex)))
+            AND(dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= dataSeries(iBloc)(iSerieBis)(iSlot)(professorIndex),dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #\= dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex)),
+            dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #= dataSeries(iBloc)(iSerieBis)(iSlot)(localIndex)))
       }
     }
   }
 
   def theoricalCoursesInTheoricalLocal() {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
-      // Either course = theorical and local = theorical, or course = exercices and local = exercices
+      // if course = theorical then local = theorical
       val sizeTh = localsThex.count(c => c.equals("TH"))
       for (i <- List.range(1, coursesNumber + 1) if coursesThex(i).equals("TH")) {
         OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= i, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #<= sizeTh)
+      }
+    }
+  }
+  
+  def exerciceCoursesInExerciceLocal() {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
+      // if course = exercices then local = exercices
+      val sizeTh = localsThex.count(c => c.equals("TH"))
+      for (i <- List.range(1, coursesNumber + 1) if coursesThex(i).equals("EX")) {
+        OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= i, dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #> sizeTh)
       }
     }
   }
