@@ -6,7 +6,7 @@ import scala.reflect.ClassManifestFactory.classType
 object Schedules extends jacop {
 
   val blocsNumber = 3
-  val seriesNumber = List(4, 3, 2)
+  val seriesNumber = List(4, 3, 2)//Amount of series per bloc
   
   val localsNumber = 13
   val professorsNumber = 4
@@ -19,26 +19,26 @@ object Schedules extends jacop {
 
   val days = List("lu", "ma", "me", "je", "ve")
   val hours = List("8h30-10h30", "10h45-12h45", "13h45-15h45", "16h00-18h00")
-  val series = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield "Bloc " + (b + 1) + " Serie " + (s + 1)
+  val series = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield "Bloc " + (b + 1) + " Serie " + (s + 1)//Attributing a name to each serie
 
   val courses = List("vide", "algo th", "asm", "algo ex", "anglais")
-  val coursesThex = List("vide", "TH", "TH", "EX", "EX")
-  val coursesOccurences = List(-1, 1, 1, 2, 2)
+  val coursesThex = List("vide", "TH", "TH", "EX", "EX")//indicates wether a course at index i is theorie or exercice
+
+  val coursesOccurences = List(-1, 1, 1, 2, 2)//Amount of occurences a course has within a serie
 
   val locals = List("vide", "Aud A", "Aud B", "B11", "B12", "B21", "A017", "A019", "A025", "A026", "B22", "B25", "D3", "LL")
-  val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX") //
-  val localsCapacity = List(0, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1) // Nombre Max de séries d'un bloc qu'un local peut tenir
+  val localsThex = List("vide", "TH", "TH", "TH", "TH", "TH", "EX", "EX", "EX", "EX", "EX", "EX", "EX", "EX") //indicates wether a local at index i is for theorie courses or exercice course
+  val localsCapacity = List(0, 4, 4, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1) // Maximum amount of series of a same bloc that can use a local
 
   val professors = List("vide", "Seront", "Grolaux", "Fernee", "Robin")
-  // retient les professeurs pour chaque cours
-  val professorsCourses = List(0, 1, 2, 3, 1)
-  val professorsHours = List(-1, 1, 1, 2, 2) // /!\ Nombre d'heures PAR SERIE pour la semaine par cours
+  val professorsHours = List(-1, 1, 1, 2, 2) // /!\ Amount of occurences a teacher teaches a class for each serie
 
   // one list per serie, each list contains 20 (one per slots = days and hours) list that contains the course, the professor and the local.
   // the value "0" for the course, professor and local means that the time-slot is empty.
   val dataSeries = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield for (s <- List.range(0, slotsNumber)) yield List(new IntVar("courses", 0, coursesNumber), new IntVar("professors", 0, professorsNumber), new IntVar("locals", 0, localsNumber))
 
   // soft constraints
+  //Attributing per teacher a list of boolvars foreach slot foreach series foreach bloc
   val softConstraintsProfs = for (p <- List.range(0, professorsNumber)) yield for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
   val softConstraintsProfsWeight= List(200, 0, 300, 100) 
   
@@ -106,9 +106,9 @@ object Schedules extends jacop {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
       for (iBlocBis <- List.range(0, blocsNumber) if iBlocBis != iBloc) {
           for (iSerieBis <- List.range(0, seriesNumber(iBlocBis))) {
-              // meme prof ne peut donner cours a des series de blocs differentes au meme moment
+            // Same teacher can't teach to two series of different blocs at the same time
             OR(AND(dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #= 0, dataSeries(iBlocBis)(iSerieBis)(iSlot)(professorIndex) #= 0), dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= dataSeries(iBlocBis)(iSerieBis)(iSlot)(professorIndex))
-            // meme local ne peut etre utilise en meme temps par des series de blocs differents
+            // Same local can't be used at the same time by series of different blocs
             OR(AND(dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #= 0, dataSeries(iBlocBis)(iSerieBis)(iSlot)(localIndex) #= 0), dataSeries(iBloc)(iSerie)(iSlot)(localIndex) #\= dataSeries(iBlocBis)(iSerieBis)(iSlot)(localIndex))
           }
         }
@@ -160,9 +160,11 @@ object Schedules extends jacop {
   def courseBeforeAnother(courseBefore: Int, courseAfter: Int) {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc)); iSlot <- List.range(0, slotsNumber)) {
       val boolvars = for (b <- List.range(0, slotsNumber - iSlot - 1)) yield new BoolVar("b" + b)
+      //count de ammount of occurences of a course after a given course/slot
       for (iNextSlots <- List.range(iSlot + 1, slotsNumber)) {
         boolvars(iNextSlots - iSlot - 1) <=> (dataSeries(iBloc)(iSerie)(iNextSlots)(courseIndex) #= courseAfter)
       }
+      // Either the course is diff from "courseBefore" --- Or the course is the "course before" and thus the "courseAfter" has courseOccurences(courseAfter) after "course before"
       OR(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #\= courseBefore, AND(dataSeries(iBloc)(iSerie)(iSlot)(courseIndex) #= courseBefore, count(boolvars, 1) #= coursesOccurences(courseAfter)))
     }
   }
@@ -170,6 +172,7 @@ object Schedules extends jacop {
   def hardProfessorNotWorkingDay(iProf: Int, day: Int) {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
       for (iSlot <- List.range(0, slotsNumber) if iSlot / hoursNumber == day) {
+        // the teacher is not iProf a given day
         dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= iProf
       }
     }
@@ -178,6 +181,7 @@ object Schedules extends jacop {
   def hardProfessorNotWorkingHour(iProf: Int, hour: Int) {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
       for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber == hour) {
+        //the teacher is not iProf a given time
         dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= iProf
       }
     }
