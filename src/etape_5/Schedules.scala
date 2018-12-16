@@ -11,7 +11,7 @@ object Schedules extends App with jacop {
   val localsNumber = 13
   val professorsNumber = 4
   val coursesNumber = 4
-  val daysNumber = 3
+  val daysNumber = 2
   val hoursNumber = 4
   val slotsNumber = daysNumber * hoursNumber
 
@@ -39,10 +39,9 @@ object Schedules extends App with jacop {
   val dataSeries = for (b <- List.range(0, blocsNumber)) yield for (s <- List.range(0, seriesNumber(b))) yield for (s <- List.range(0, slotsNumber)) yield List(new IntVar("courses", 0, coursesNumber), new IntVar("professors", 0, professorsNumber), new IntVar("locals", 0, localsNumber))
 
   // soft constraints
-  val softConstraintsSeront = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
-  val softConstraintsRobin = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
-  val softConstraintsFerneeuw = for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
-
+  val softConstraintsProfs = for (p <- List.range(0, professorsNumber)) yield for (b <- List.range(0, blocsNumber)) yield for (se <- List.range(0, seriesNumber(b))) yield for (sl <- List.range(0, slotsNumber)) yield new BoolVar("b" + b + "se" + se + "sl" + sl)
+  val softConstraintsProfsWeight= List(200, 0, 300, 100) 
+  
   courseBeforeAnother(1, 3) // "algo th" before "algo ex" 
   manageOccurences()
   assignEachProfessorToACourse()
@@ -52,25 +51,18 @@ object Schedules extends App with jacop {
   theoricalCoursesInTheoricalLocal()
   exerciceCoursesInExerciceLocal()
   courseToLocal(4, 13) // english class given in the local "labo langue"
-  hardProfessorNotWorkingDay(2, 1) // Grolaux doesn't work on monday
-  hardProfessorNotWorkingDay(2, 2) // Grolaux doesn't work on wed
-  hardProfessorNotWorkingHour(2, 0) // Grolaux doesn't work the first hour
-  hardProfessorNotWorkingHour(2, 1) // Grolaux doesn't work the second hour
-  softProfessorNotWorkingHour()
+  hardProfessorNotWorkingDay(2, 1) // Grolaux doesn't work on monday 
+  hardProfessorNotWorkingHour(2, 1) // Grolaux doesn't work the second hour 
   
-  def softProfessorNotWorkingHour() {
-    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
-      for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber != 0) {
-        // Seront donne cours uniquement premiere heure au matin tous les jours de la semaine
-        softConstraintsSeront(iBloc)(iSerie)(iSlot) <=> (dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= 1)
-        // Robin donne cours uniquement premiere heure au matin tous les jours de la semaine
-        softConstraintsRobin(iBloc)(iSerie)(iSlot) <=> (dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= 4)
-        // Ferneeuw donne cours uniquement premiere heure au matin tous les jours de la semaine
-        softConstraintsFerneeuw(iBloc)(iSerie)(iSlot) <=> (dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= 3)
-      }
-    }
-  }
-
+  // Seront only works the first hour
+  softProfessorNotWorkingHour(1, 1); softProfessorNotWorkingHour(1, 2); softProfessorNotWorkingHour(1, 3)
+  // Ferneeuw only works the first hour
+  softProfessorNotWorkingHour(2, 1); softProfessorNotWorkingHour(2, 2); softProfessorNotWorkingHour(2, 3)
+  // Robin only works the first hour
+  softProfessorNotWorkingHour(4, 1); softProfessorNotWorkingHour(3, 2); softProfessorNotWorkingHour(3, 3)
+  
+  computeResults()
+  
   def manageOccurences() {
     for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
       for (i <- List.range(1, coursesNumber + 1)) {
@@ -187,15 +179,29 @@ object Schedules extends App with jacop {
       }
     }
   }
+
+  def softProfessorNotWorkingHour(iProf :Int, hour :Int) {
+    for (iBloc <- List.range(0, blocsNumber); iSerie <- List.range(0, seriesNumber(iBloc))) {
+      for (iSlot <- List.range(0, slotsNumber) if iSlot % hoursNumber == hour) {
+        softConstraintsProfs(iProf - 1)(iBloc)(iSerie)(iSlot) <=> (dataSeries(iBloc)(iSerie)(iSlot)(professorIndex) #\= iProf)
+      }
+    }
+  }
+
   
-  
-  val dataList = dataSeries.map(b => b.map(s => s.flatMap(_.toList)).flatMap(_.toList)).flatMap(_.toList)
-  val select = search(dataList, first_fail, indomain_middle) 
-  val costSeront = softConstraintsSeront.flatMap(_.toList).flatMap(_.toList) 
-  val costRobin = softConstraintsRobin.flatMap(_.toList).flatMap(_.toList)
-  val costFerneeuw = softConstraintsFerneeuw.flatMap(_.toList).flatMap(_.toList)
-  val cost = count(costSeront, 0) * 100 + count(costRobin, 0) * 100 + count(costFerneeuw, 0)
-  val result = minimize(select, cost, printSolutions)
+  def computeResults() {
+    val dataList = dataSeries.map(b => b.map(s => s.flatMap(_.toList)).flatMap(_.toList)).flatMap(_.toList)
+    val select = search(dataList, first_fail, indomain_middle)
+    val allCosts = for (p <- List.range(0, professorsNumber)) yield count(softConstraintsProfs(p).flatMap(_.toList).flatMap(_.toList), 0) * softConstraintsProfsWeight(p)
+    def sum(x: List[IntVar]): IntVar = {
+      x match {
+        case Nil    => 0
+        case a :: b => a + sum(b)
+      }
+    }
+    val totalCost = sum(allCosts)
+    minimize(select, totalCost, printSolutions)
+  }
 
   def printSolutions(): Unit = {
     for (b <- List.range(0, blocsNumber)) {
